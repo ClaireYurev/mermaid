@@ -3,17 +3,23 @@
 <head>
     <title>Mermaid Viewer</title>
     <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
     <div class="toolbar">
-        <button id="openFile">Open File</button>
+        <button id="openFile" title="Open File">
+            <span>Open File</span>
+        </button>
         <button id="zoomIn" title="Zoom In">
             <span class="icon">+</span>
         </button>
         <button id="zoomOut" title="Zoom Out">
             <span class="icon">-</span>
         </button>
-        <button id="toggleEditor">Toggle Editor</button>
+        <button id="toggleEditor" title="Toggle Editor">
+            <span>Toggle Editor</span>
+        </button>
     </div>
     
     <div class="main-content">
@@ -22,13 +28,7 @@
         </div>
         <div id="viewer-container">
             <div id="error-container" class="error-message"></div>
-            <div id="mermaid-diagram"></div>
-            
-            <!-- Test diagram -->
-            <div class="mermaid">
-                graph TD
-                A[Test] --> B[Test2]
-            </div>
+            <div id="mermaid-diagram" class="mermaid-container"></div>
         </div>
     </div>
 </body>

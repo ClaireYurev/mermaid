@@ -1,39 +1,33 @@
-// src/renderer/app.js
 import * as monaco from 'monaco-editor';
 import mermaid from 'mermaid';
 
 let editor;
 let currentZoom = 1.0;
 
-// Basic Mermaid initialization
+// Initialize Mermaid with production settings
 mermaid.initialize({
-    startOnLoad: true,  // Changed to true
+    startOnLoad: true,
     theme: 'default',
-    securityLevel: 'loose'
+    securityLevel: 'loose',
+    flowchart: {
+        htmlLabels: true,
+        curve: 'linear',
+        padding: 15
+    },
+    sequence: {
+        diagramMarginX: 50,
+        diagramMarginY: 10,
+        actorMargin: 50,
+        width: 150,
+        height: 65,
+        boxMargin: 10
+    }
 });
 
 // Wait for DOM and APIs to be ready
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOM Content Loaded');
     await initializeMonaco();
     setupEventListeners();
-    
-    // Test render a simple diagram
-    const testDiagram = `graph TD
-    A[Start] --> B[End]`;
-    
-    try {
-        console.log('Attempting to render test diagram...');
-        const mermaidContainer = document.getElementById('mermaid-diagram');
-        mermaidContainer.innerHTML = `<div class="mermaid">
-            ${testDiagram}
-        </div>`;
-        
-        await mermaid.run();
-        console.log('Test diagram rendered successfully');
-    } catch (error) {
-        console.error('Failed to render test diagram:', error);
-    }
 });
 
 // Initialize Monaco Editor
@@ -87,24 +81,9 @@ async function initializeMonaco() {
         }
     });
 
-    // Create Monaco editor instance
+    // Create Monaco editor instance with improved settings
     editor = monaco.editor.create(document.getElementById('monaco-editor'), {
-        value: `graph TD
-    A[Global Digital Economy] --> B[AI and ML Market]
-    A --> C[Remote Work Tech]
-    A --> D[EdTech]
-    A --> E[Blockchain]
-    A --> F[IoT]
-    A --> G[Digital Mental Health]
-    A --> H[AR/VR]
-    
-    B --> B1[2025 Projection: $190B]
-    C --> C1[2025 Projection: $80B]
-    D --> D1[2025 Projection: $400B]
-    E --> E1[2025 Projection: $40B]
-    F --> F1[2025 Projection: $1.6T]
-    G --> G1[2025 Projection: $30B]
-    H --> H1[2025 Projection: $300B]`,
+        value: getDefaultDiagram(),
         language: 'mermaid',
         theme: 'vs-light',
         minimap: { enabled: false },
@@ -118,23 +97,70 @@ async function initializeMonaco() {
         fontSize: 14,
         lineHeight: 21,
         formatOnPaste: true,
-        formatOnType: true
+        formatOnType: true,
+        suggestOnTriggerCharacters: true,
+        renderControlCharacters: false,
+        rulers: [],
+        overviewRulerLanes: 0
     });
 
-    // Initial render of the diagram
+    // Initial render
     const content = editor.getValue();
     await updateMermaidDiagram(content);
 
-    // Add change listener for real-time preview
+    // Add change listener with debounce
     editor.onDidChangeModelContent(debounce(async () => {
         const content = editor.getValue();
         await updateMermaidDiagram(content);
-    }, 500));
+    }, 300));
 }
 
-// Set up event listeners
+// Update Mermaid diagram with improved error handling
+async function updateMermaidDiagram(content) {
+    const mermaidContainer = document.getElementById('mermaid-diagram');
+    if (!mermaidContainer) return;
+    
+    try {
+        // Clear previous diagram
+        mermaidContainer.innerHTML = '';
+        
+        // Create new diagram container
+        const diagramDiv = document.createElement('div');
+        diagramDiv.className = 'mermaid';
+        diagramDiv.style.zoom = currentZoom;
+        diagramDiv.textContent = formatMermaidContent(content);
+        
+        // Add to container
+        mermaidContainer.appendChild(diagramDiv);
+        
+        // Render with proper error handling
+        await mermaid.run();
+        clearErrorMessage();
+        
+    } catch (error) {
+        console.error('Mermaid rendering error:', error);
+        showErrorMessage(error.message);
+    }
+}
+
+// Helper Functions
+function getDefaultDiagram() {
+    return `graph TD
+    A[Start] --> B[Process]
+    B --> C[End]`;
+}
+
+function formatMermaidContent(content) {
+    // Remove comments and trim whitespace
+    return content
+        .split('\n')
+        .map(line => line.replace(/\/\/.*$/, '').trim())
+        .filter(line => line)
+        .join('\n');
+}
+
 function setupEventListeners() {
-    // Handle editor visibility toggle
+    // Editor toggle
     document.getElementById('toggleEditor')?.addEventListener('click', () => {
         const editorContainer = document.getElementById('editor-container');
         const isHidden = editorContainer.classList.contains('hidden');
@@ -148,11 +174,11 @@ function setupEventListeners() {
         }
     });
 
-    // Add zoom button handlers
+    // Zoom controls
     document.getElementById('zoomIn')?.addEventListener('click', () => handleZoom('in'));
     document.getElementById('zoomOut')?.addEventListener('click', () => handleZoom('out'));
 
-    // Handle file opening if electron API is available
+    // File handling
     if (window.electron?.onFileOpened) {
         window.electron.onFileOpened(({ content, filePath }) => {
             if (editor) {
@@ -163,52 +189,44 @@ function setupEventListeners() {
     }
 }
 
-// Simplified updateMermaidDiagram function
-async function updateMermaidDiagram(content) {
-    console.log('Updating diagram with content:', content);
-    const mermaidContainer = document.getElementById('mermaid-diagram');
+function handleZoom(direction) {
+    const zoomStep = 0.25;
+    const minZoom = 0.1;
+    const maxZoom = 8.0;
     
-    try {
-        // Clear previous diagram
-        mermaidContainer.innerHTML = '';
-        
-        // Create new diagram container
-        const diagramDiv = document.createElement('div');
-        diagramDiv.className = 'mermaid';
-        diagramDiv.textContent = content;
-        
-        // Add to container
-        mermaidContainer.appendChild(diagramDiv);
-        
-        // Render
-        console.log('Running mermaid...');
-        await mermaid.run();
-        console.log('Mermaid run complete');
-        
-    } catch (error) {
-        console.error('Mermaid rendering error:', error);
-        showErrorMessage(`Rendering error: ${error.message}`);
+    if (direction === 'in' && currentZoom < maxZoom) {
+        currentZoom = Math.min(currentZoom * 1.25, maxZoom);
+    } else if (direction === 'out' && currentZoom > minZoom) {
+        currentZoom = Math.max(currentZoom / 1.25, minZoom);
     }
+    
+    const diagram = document.querySelector('.mermaid');
+    if (diagram) {
+        diagram.style.zoom = currentZoom;
+        diagram.style.transform = `scale(${currentZoom})`;
+        diagram.style.transformOrigin = 'top left';
+        
+        const container = document.getElementById('mermaid-diagram');
+        if (container) {
+            container.style.minHeight = `${100 * currentZoom}%`;
+        }
+    }
+    
+    updateZoomDisplay();
 }
 
-// Format the Mermaid content
-function formatMermaidContent(content) {
-    // Remove any existing comments
-    let formatted = content.replace(/\/\/.*$/gm, '');
-    
-    // Remove extra whitespace and empty lines
-    formatted = formatted.split('\n')
-        .map(line => line.trim())
-        .filter(line => line)
-        .join('\n');
-    
-    // Ensure the graph TD is on its own line
-    formatted = formatted.replace(/^(\s*graph\s+TD\s*)(.+)/, '$1\n$2');
-    
-    return formatted;
+function updateZoomDisplay() {
+    const zoomDisplay = document.getElementById('zoom-display');
+    if (!zoomDisplay) {
+        const toolbar = document.querySelector('.toolbar');
+        const display = document.createElement('span');
+        display.id = 'zoom-display';
+        display.className = 'zoom-display';
+        toolbar.appendChild(display);
+    }
+    document.getElementById('zoom-display').textContent = `${Math.round(currentZoom * 100)}%`;
 }
 
-// Error handling
 function showErrorMessage(message) {
     const errorContainer = document.getElementById('error-container') || createErrorContainer();
     errorContainer.textContent = `Diagram Error: ${message}`;
@@ -230,25 +248,6 @@ function createErrorContainer() {
     return container;
 }
 
-// Zoom handling
-function handleZoom(direction) {
-    const zoomStep = 0.1;
-    const minZoom = 0.1;
-    const maxZoom = 2.0;
-    
-    if (direction === 'in' && currentZoom < maxZoom) {
-        currentZoom = Math.min(currentZoom + zoomStep, maxZoom);
-    } else if (direction === 'out' && currentZoom > minZoom) {
-        currentZoom = Math.max(currentZoom - zoomStep, minZoom);
-    }
-    
-    const diagram = document.querySelector('.mermaid');
-    if (diagram) {
-        diagram.style.zoom = currentZoom;
-    }
-}
-
-// Debounce to prevent overly frequent updates
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
