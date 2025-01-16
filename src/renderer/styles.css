@@ -1,4 +1,3 @@
-// src/renderer/styles.css
   body {
       margin: 0;
       padding: 0;
@@ -47,3 +46,64 @@
   #monaco-editor {
       height: 100%;
   }
+
+
+/* Additions for Monaco editor */
+#monaco-editor {
+    height: 100%;
+    overflow: hidden;
+    border-right: 1px solid #ddd;
+}
+
+.split-pane {
+    display: flex;
+    height: 100%;
+}
+
+.editor-pane {
+    width: 40%;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.viewer-pane {
+    width: 60%;
+    height: 100%;
+    overflow: auto;
+    padding: 20px;
+    transition: width 0.3s ease;
+}
+
+.full-width {
+    width: 100% !important;
+}
+
+/* Theme-related styles */
+.vs-light .monaco-editor {
+    background-color: #ffffff;
+}
+
+.vs-dark .monaco-editor {
+    background-color: #1e1e1e;
+}
+
+/* Syntax highlighting colors */
+.mermaid-keyword {
+    color: #569cd6;
+}
+
+.mermaid-type {
+    color: #4ec9b0;
+}
+
+.mermaid-string {
+    color: #ce9178;
+}
+
+.mermaid-comment {
+    color: #6a9955;
+}
+
+.mermaid-operator {
+    color: #d4d4d4;
+}

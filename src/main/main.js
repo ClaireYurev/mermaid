@@ -1,4 +1,3 @@
-//src/main/main.js
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
@@ -12,9 +11,18 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      // Allow loading files from node_modules
+      webSecurity: true,
+      additionalArguments: [`--app-path=${app.getAppPath()}`]
     }
   });
+
+    // Enable loading of local resources
+    mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+        const parsedUrl = new URL(webContents.getURL());
+        callback(parsedUrl.protocol === 'file:');
+      });
 
   mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
 
