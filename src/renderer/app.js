@@ -4,6 +4,11 @@ import mermaid from 'mermaid';
 let editor;
 let currentZoom = 1.0;
 
+// panning variables
+let isPanning = false;
+let lastX;
+let lastY;
+
 // Initialize Mermaid with production settings
 mermaid.initialize({
     startOnLoad: true,
@@ -187,6 +192,10 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Pan controls
+    setupPanControls();
+
 }
 
 function handleZoom(direction) {
@@ -225,6 +234,46 @@ function updateZoomDisplay() {
         toolbar.appendChild(display);
     }
     document.getElementById('zoom-display').textContent = `${Math.round(currentZoom * 100)}%`;
+}
+
+// Handle pan mode toggling
+function setupPanControls() {
+    const panButton = document.getElementById('panTool');
+    const viewerContainer = document.getElementById('viewer-container');
+    
+    panButton.addEventListener('click', () => {
+        panButton.classList.toggle('active');
+        viewerContainer.style.cursor = panButton.classList.contains('active') ? 'grab' : 'default';
+    });
+
+    viewerContainer.addEventListener('mousedown', (e) => {
+        if (!panButton.classList.contains('active')) return;
+        
+        isPanning = true;
+        lastX = e.pageX;
+        lastY = e.pageY;
+        viewerContainer.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        
+        const dx = e.pageX - lastX;
+        const dy = e.pageY - lastY;
+        
+        viewerContainer.scrollLeft -= dx;
+        viewerContainer.scrollTop -= dy;
+        
+        lastX = e.pageX;
+        lastY = e.pageY;
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isPanning) return;
+        
+        isPanning = false;
+        viewerContainer.style.cursor = panButton.classList.contains('active') ? 'grab' : 'default';
+    });
 }
 
 function showErrorMessage(message) {

@@ -8,18 +8,31 @@
 </head>
 <body>
     <div class="toolbar">
-        <button id="openFile" title="Open File">
-            <span>Open File</span>
-        </button>
-        <button id="zoomIn" title="Zoom In">
-            <span class="icon">+</span>
-        </button>
-        <button id="zoomOut" title="Zoom Out">
-            <span class="icon">-</span>
-        </button>
-        <button id="toggleEditor" title="Toggle Editor">
-            <span>Toggle Editor</span>
-        </button>
+        <div class="toolbar-group">
+            <button id="openFile" class="tool-button" title="Open File">
+                <span>Open File</span>
+            </button>
+        </div>
+        <div class="toolbar-group">
+            <button id="panTool" class="tool-button" title="Pan Tool">
+                <!-- Hand icon for pan tool -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+                </svg>
+            </button>
+            <button id="zoomIn" class="tool-button" title="Zoom In">
+                <span class="icon">+</span>
+            </button>
+            <button id="zoomOut" class="tool-button" title="Zoom Out">
+                <span class="icon">-</span>
+            </button>
+            <span id="zoom-display" class="zoom-display">100%</span>
+        </div>
+        <div class="toolbar-group">
+            <button id="toggleEditor" class="tool-button" title="Toggle Editor">
+                <span>Toggle Editor</span>
+            </button>
+        </div>
     </div>
     
     <div class="main-content">
