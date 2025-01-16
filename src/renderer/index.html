@@ -3,12 +3,22 @@
 <head>
     <title>Mermaid Viewer</title>
     <link rel="stylesheet" href="styles.css">
+    <script>
+        // Ensure Mermaid doesn't auto-initialize
+        window.mermaid = {
+            startOnLoad: false
+        };
+    </script>
 </head>
 <body>
     <div class="toolbar">
         <button id="openFile">Open File</button>
-        <button id="zoomIn">Zoom In</button>
-        <button id="zoomOut">Zoom Out</button>
+        <button id="zoomIn" title="Zoom In">
+            <span class="icon">+</span>
+        </button>
+        <button id="zoomOut" title="Zoom Out">
+            <span class="icon">-</span>
+        </button>
         <button id="toggleEditor">Toggle Editor</button>
     </div>
     
@@ -17,8 +27,10 @@
             <div id="monaco-editor"></div>
         </div>
         <div id="viewer-container">
-            <div id="mermaid-diagram"></div>
+            <!-- Error container will be dynamically inserted here -->
+            <div id="mermaid-diagram" class="mermaid-container"></div>
         </div>
     </div>
 </body>
 </html>
+Last edited just now

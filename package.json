@@ -10,7 +10,7 @@
     },
     "dependencies": {
         "electron-store": "^8.1.0",
-        "mermaid": "^10.6.0",
+        "mermaid": "^10.9.3",
         "monaco-editor": "^0.45.0"
     },
     "devDependencies": {
