@@ -1,0 +1,27 @@
+// src/renderer/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mermaid Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="toolbar">
+        <button id="openFile">Open File</button>
+        <button id="zoomIn">Zoom In</button>
+        <button id="zoomOut">Zoom Out</button>
+        <button id="toggleEditor">Toggle Editor</button>
+    </div>
+    
+    <div class="main-content">
+        <div id="editor-container" class="hidden">
+            <div id="monaco-editor"></div>
+        </div>
+        <div id="viewer-container">
+            <div id="mermaid-diagram"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
