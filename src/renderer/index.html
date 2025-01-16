@@ -3,12 +3,6 @@
 <head>
     <title>Mermaid Viewer</title>
     <link rel="stylesheet" href="styles.css">
-    <script>
-        // Ensure Mermaid doesn't auto-initialize
-        window.mermaid = {
-            startOnLoad: false
-        };
-    </script>
 </head>
 <body>
     <div class="toolbar">
@@ -23,14 +17,19 @@
     </div>
     
     <div class="main-content">
-        <div id="editor-container" class="hidden">
+        <div id="editor-container">
             <div id="monaco-editor"></div>
         </div>
         <div id="viewer-container">
-            <!-- Error container will be dynamically inserted here -->
-            <div id="mermaid-diagram" class="mermaid-container"></div>
+            <div id="error-container" class="error-message"></div>
+            <div id="mermaid-diagram"></div>
+            
+            <!-- Test diagram -->
+            <div class="mermaid">
+                graph TD
+                A[Test] --> B[Test2]
+            </div>
         </div>
     </div>
 </body>
 </html>
-Last edited just now

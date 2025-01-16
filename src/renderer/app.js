@@ -1,28 +1,39 @@
+// src/renderer/app.js
 import * as monaco from 'monaco-editor';
 import mermaid from 'mermaid';
 
 let editor;
 let currentZoom = 1.0;
 
-// Initialize Mermaid with proper configuration
+// Basic Mermaid initialization
 mermaid.initialize({
-    startOnLoad: false,
+    startOnLoad: true,  // Changed to true
     theme: 'default',
-    securityLevel: 'loose',
-    flowchart: {
-        useMaxWidth: false,
-        htmlLabels: true,
-        curve: 'linear'
-    },
-    er: {
-        useMaxWidth: false
-    }
+    securityLevel: 'loose'
 });
 
 // Wait for DOM and APIs to be ready
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM Content Loaded');
     await initializeMonaco();
     setupEventListeners();
+    
+    // Test render a simple diagram
+    const testDiagram = `graph TD
+    A[Start] --> B[End]`;
+    
+    try {
+        console.log('Attempting to render test diagram...');
+        const mermaidContainer = document.getElementById('mermaid-diagram');
+        mermaidContainer.innerHTML = `<div class="mermaid">
+            ${testDiagram}
+        </div>`;
+        
+        await mermaid.run();
+        console.log('Test diagram rendered successfully');
+    } catch (error) {
+        console.error('Failed to render test diagram:', error);
+    }
 });
 
 // Initialize Monaco Editor
@@ -152,38 +163,31 @@ function setupEventListeners() {
     }
 }
 
-// Update Mermaid diagram with proper error handling
+// Simplified updateMermaidDiagram function
 async function updateMermaidDiagram(content) {
+    console.log('Updating diagram with content:', content);
     const mermaidContainer = document.getElementById('mermaid-diagram');
-    if (!mermaidContainer) return;
     
     try {
         // Clear previous diagram
         mermaidContainer.innerHTML = '';
         
-        // Format the content
-        const formattedContent = formatMermaidContent(content);
+        // Create new diagram container
+        const diagramDiv = document.createElement('div');
+        diagramDiv.className = 'mermaid';
+        diagramDiv.textContent = content;
         
-        // Create a unique ID for the diagram
-        const id = `mermaid-${Date.now()}`;
+        // Add to container
+        mermaidContainer.appendChild(diagramDiv);
         
-        // Create the diagram wrapper
-        const diagramWrapper = document.createElement('div');
-        diagramWrapper.className = 'mermaid';
-        diagramWrapper.id = id;
-        diagramWrapper.style.zoom = currentZoom;
+        // Render
+        console.log('Running mermaid...');
+        await mermaid.run();
+        console.log('Mermaid run complete');
         
-        // Add the wrapper to the container
-        mermaidContainer.appendChild(diagramWrapper);
-        
-        // Render the diagram
-        const { svg } = await mermaid.render(id, formattedContent);
-        diagramWrapper.innerHTML = svg;
-        
-        clearErrorMessage();
     } catch (error) {
         console.error('Mermaid rendering error:', error);
-        showErrorMessage(error.message);
+        showErrorMessage(`Rendering error: ${error.message}`);
     }
 }
 
