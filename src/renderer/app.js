@@ -202,9 +202,12 @@ function setupToolToggle() {
     
     toggleButton.addEventListener('click', () => {
         toggleButton.classList.toggle('active');
-        const isPanMode = toggleButton.classList.contains('active');
-        toggleButton.title = isPanMode ? 'Switch to Select Tool' : 'Switch to Pan Tool';
-        viewerContainer.style.cursor = isPanMode ? 'grab' : 'default';
+        // const isPanMode = toggleButton.classList.contains('active'); Deprecated.
+        const isSelectMode = toggleButton.classList.contains('active');
+        // toggleButton.title = isPanMode ? 'Switch to Select Tool' : 'Switch to Pan Tool'; Deprecated
+        toggleButton.title = isSelectMode ? 'Switch to Pan Tool' : 'Switch to Select Tool';
+        // viewerContainer.style.cursor = isPanMode ? 'grab' : 'default'; Deprecated
+        viewerContainer.style.cursor = isSelectMode ? 'default' : 'grab';
 
         // Toggle visibility of icons
         const selectIcon = toggleButton.querySelector('.select-icon');
@@ -214,7 +217,7 @@ function setupToolToggle() {
     });
 
     viewerContainer.addEventListener('mousedown', (e) => {
-        if (!toggleButton.classList.contains('active')) return;
+        if (toggleButton.classList.contains('active')) return;
         
         isPanning = true;
         lastX = e.pageX;
@@ -238,7 +241,7 @@ function setupToolToggle() {
     document.addEventListener('mouseup', () => {
         if (!isPanning) return;
         isPanning = false;
-        viewerContainer.style.cursor = toggleButton.classList.contains('active') ? 'grab' : 'default';
+        viewerContainer.style.cursor = toggleButton.classList.contains('active') ? 'default' : 'grab';
     });
 }
 
