@@ -33,6 +33,8 @@ mermaid.initialize({
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeMonaco();
     setupEventListeners();
+    setupResizableDivider();
+    updateViewControlsPosition();
 });
 
 // Initialize Monaco Editor
@@ -120,7 +122,6 @@ async function initializeMonaco() {
     }, 300));
 }
 
-// Update Mermaid diagram with improved error handling
 async function updateMermaidDiagram(content) {
     const mermaidContainer = document.getElementById('mermaid-diagram');
     if (!mermaidContainer) return;
@@ -148,23 +149,103 @@ async function updateMermaidDiagram(content) {
     }
 }
 
-// Helper Functions
-function getDefaultDiagram() {
-    return `graph TD
-    A[Start] --> B[Process]
-    B --> C[End]`;
+function setupResizableDivider() {
+    const editorContainer = document.getElementById('editor-container');
+    const viewerContainer = document.getElementById('viewer-container');
+    const divider = document.querySelector('.divider');
+    let isDragging = false;
+
+    divider.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        divider.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        // Prevent text selection while dragging
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+
+        const containerWidth = document.querySelector('.main-content').offsetWidth;
+        let newWidth = e.clientX;
+
+        // Enforce minimum width of 100px from left side
+        newWidth = Math.max(100, newWidth);
+        // Enforce maximum width (prevent going too far right)
+        newWidth = Math.min(newWidth, containerWidth - 200);
+
+        // Set the new width as a percentage
+        const widthPercentage = (newWidth / containerWidth) * 100;
+        editorContainer.style.width = `${widthPercentage}%`;
+        
+        // Update view controls position
+        updateViewControlsPosition();
+        
+        // Ensure Monaco editor reflows correctly
+        if (editor) {
+            editor.layout();
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        divider.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
 }
 
-function formatMermaidContent(content) {
-    // Remove comments and trim whitespace
-    return content
-        .split('\n')
-        .map(line => line.replace(/\/\/.*$/, '').trim())
-        .filter(line => line)
-        .join('\n');
+function setupToolToggle() {
+    const toggleButton = document.getElementById('toggleTool');
+    const viewerContainer = document.getElementById('viewer-container');
+    
+    toggleButton.addEventListener('click', () => {
+        toggleButton.classList.toggle('active');
+        const isPanMode = toggleButton.classList.contains('active');
+        toggleButton.title = isPanMode ? 'Switch to Select Tool' : 'Switch to Pan Tool';
+        viewerContainer.style.cursor = isPanMode ? 'grab' : 'default';
+
+        // Toggle visibility of icons
+        const selectIcon = toggleButton.querySelector('.select-icon');
+        const panIcon = toggleButton.querySelector('.pan-icon');
+        selectIcon.classList.toggle('hidden');
+        panIcon.classList.toggle('hidden');
+    });
+
+    viewerContainer.addEventListener('mousedown', (e) => {
+        if (!toggleButton.classList.contains('active')) return;
+        
+        isPanning = true;
+        lastX = e.pageX;
+        lastY = e.pageY;
+        viewerContainer.style.cursor = 'grabbing';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        
+        const dx = e.pageX - lastX;
+        const dy = e.pageY - lastY;
+        
+        viewerContainer.scrollLeft -= dx;
+        viewerContainer.scrollTop -= dy;
+        
+        lastX = e.pageX;
+        lastY = e.pageY;
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (!isPanning) return;
+        isPanning = false;
+        viewerContainer.style.cursor = toggleButton.classList.contains('active') ? 'grab' : 'default';
+    });
 }
 
 function setupEventListeners() {
+    // Setup resizable divider
+    setupResizableDivider();
+    
     // Editor toggle
     document.getElementById('toggleEditor')?.addEventListener('click', () => {
         const editorContainer = document.getElementById('editor-container');
@@ -177,6 +258,9 @@ function setupEventListeners() {
             document.getElementById('viewer-container').style.width = '60%';
             editor?.layout();
         }
+
+        // Update view-controls position after toggle
+        updateViewControlsPosition();
     });
 
     // Zoom controls
@@ -193,9 +277,23 @@ function setupEventListeners() {
         });
     }
 
-    // Pan controls
-    setupPanControls();
+    // Set up tool toggle and pan controls
+    setupToolToggle();
 
+    // Save file handler (if implemented in electron)
+    document.getElementById('saveFile')?.addEventListener('click', () => {
+        if (window.electron?.saveFile) {
+            window.electron.saveFile(editor.getValue());
+        }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', debounce(() => {
+        updateViewControlsPosition();
+        if (editor) {
+            editor.layout();
+        }
+    }, 100));
 }
 
 function handleZoom(direction) {
@@ -226,54 +324,46 @@ function handleZoom(direction) {
 
 function updateZoomDisplay() {
     const zoomDisplay = document.getElementById('zoom-display');
-    if (!zoomDisplay) {
-        const toolbar = document.querySelector('.toolbar');
-        const display = document.createElement('span');
-        display.id = 'zoom-display';
-        display.className = 'zoom-display';
-        toolbar.appendChild(display);
+    if (zoomDisplay) {
+        zoomDisplay.textContent = `${Math.round(currentZoom * 100)}%`;
     }
-    document.getElementById('zoom-display').textContent = `${Math.round(currentZoom * 100)}%`;
 }
 
-// Handle pan mode toggling
-function setupPanControls() {
-    const panButton = document.getElementById('panTool');
-    const viewerContainer = document.getElementById('viewer-container');
+function updateViewControlsPosition() {
+    const viewControls = document.querySelector('.view-controls');
+    const editorContainer = document.getElementById('editor-container');
     
-    panButton.addEventListener('click', () => {
-        panButton.classList.toggle('active');
-        viewerContainer.style.cursor = panButton.classList.contains('active') ? 'grab' : 'default';
-    });
+    if (viewControls && editorContainer) {
+        // Force initial width if not set
+        if (!editorContainer.style.width) {
+            editorContainer.style.width = '40%';
+        }
+        const editorWidth = editorContainer.offsetWidth;
+        viewControls.style.left = `${editorWidth + 120}px`;
+        
+        // Ensure the view controls don't go off-screen
+        const maxLeft = window.innerWidth - viewControls.offsetWidth - 20;
+        const currentLeft = parseInt(viewControls.style.left);
+        if (currentLeft > maxLeft) {
+            viewControls.style.left = `${maxLeft}px`;
+        }
+    }
+}
 
-    viewerContainer.addEventListener('mousedown', (e) => {
-        if (!panButton.classList.contains('active')) return;
-        
-        isPanning = true;
-        lastX = e.pageX;
-        lastY = e.pageY;
-        viewerContainer.style.cursor = 'grabbing';
-    });
+// Helper Functions
+function getDefaultDiagram() {
+    return `graph TD
+    A[Start] --> B[Process]
+    B --> C[End]`;
+}
 
-    document.addEventListener('mousemove', (e) => {
-        if (!isPanning) return;
-        
-        const dx = e.pageX - lastX;
-        const dy = e.pageY - lastY;
-        
-        viewerContainer.scrollLeft -= dx;
-        viewerContainer.scrollTop -= dy;
-        
-        lastX = e.pageX;
-        lastY = e.pageY;
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (!isPanning) return;
-        
-        isPanning = false;
-        viewerContainer.style.cursor = panButton.classList.contains('active') ? 'grab' : 'default';
-    });
+function formatMermaidContent(content) {
+    // Remove comments and trim whitespace
+    return content
+        .split('\n')
+        .map(line => line.replace(/\/\/.*$/, '').trim())
+        .filter(line => line)
+        .join('\n');
 }
 
 function showErrorMessage(message) {
