@@ -2,14 +2,19 @@
     "name": "mermaid-viewer",
     "version": "1.0.0",
     "description": "A desktop application for viewing .mermaid files",
+    "author": "Claire Yurev",
     "main": "src/main/main.js",
     "scripts": {
-        "start": "webpack --watch & electron .",
-        "build": "webpack --mode production && electron-builder",
-        "dev": "webpack serve --config webpack.config.js"
+        "start": "electron .",
+        "dev": "webpack serve --config webpack.config.js",
+        "build": "node build.js",
+        "pack": "electron-builder --dir",
+        "dist": "electron-builder",
+        "clean": "rimraf dist"
     },
     "dependencies": {
         "electron-store": "^8.1.0",
+        "lodash": "^4.17.21",
         "mermaid": "^10.9.3",
         "monaco-editor": "^0.45.0"
     },
@@ -21,23 +26,81 @@
         "html-webpack-plugin": "^5.6.3",
         "jest": "^29.7.0",
         "monaco-editor-webpack-plugin": "^7.1.0",
+        "rimraf": "^5.0.10",
         "style-loader": "^4.0.0",
+        "terser-webpack-plugin": "^5.3.11",
         "webpack": "^5.97.1",
         "webpack-cli": "^6.0.1",
         "webpack-dev-server": "^5.2.0"
     },
     "build": {
         "appId": "com.mermaidviewer.app",
+        "productName": "Mermaid Viewer",
+        "directories": {
+            "output": "dist",
+            "buildResources": "build"
+        },
+        "files": [
+            "dist/**/*",
+            "src/main/**/*",
+            "src/renderer/**/*",
+            "package.json"
+        ],
+        "extraResources": [
+            {
+                "from": "dist",
+                "to": "app/dist",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ],
+        "asar": true,
         "win": {
             "target": "nsis",
             "icon": "src/assets/icon.ico"
+        },
+        "mac": {
+            "target": "dmg",
+            "icon": "src/assets/icon.icns"
+        },
+        "linux": {
+            "target": "AppImage",
+            "icon": "src/assets/icon.png"
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "shortcutName": "Mermaid Viewer"
         },
         "fileAssociations": [
             {
                 "ext": "mermaid",
                 "name": "Mermaid File",
                 "description": "Mermaid diagram file"
+            },
+            {
+                "ext": "mmd",
+                "name": "Mermaid File",
+                "description": "Mermaid diagram file"
             }
         ]
+    },
+    "keywords": [
+        "mermaid",
+        "diagram",
+        "viewer",
+        "electron",
+        "monaco-editor"
+    ],
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/mermaid-viewer.git"
+    },
+    "engines": {
+        "node": ">=18.0.0"
     }
 }

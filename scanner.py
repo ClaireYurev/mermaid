@@ -33,7 +33,7 @@ def get_unique_output_filename(base_name):
 
 def scan_and_write_to_rtf(output_file):
     excluded_files = {"package-lock.json", "README.md", ".gitignore"}
-    excluded_dirs = {"node_modules", ".git"}
+    excluded_dirs = {"node_modules", ".git", "dist", "build", "venv"}
 
     # Include patterns from .gitignore
     gitignore_patterns = read_gitignore()

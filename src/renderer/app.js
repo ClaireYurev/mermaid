@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     setupResizableDivider();
     setupToolToggle();
+    setupFileHandlers();
     updateViewControlsPosition(); // Initial positioning
 });
 
@@ -174,26 +175,22 @@ function updateViewControlsPosition() {
     const toolbarRect = toolbar.getBoundingClientRect();
     const fileControlsRect = fileControls.getBoundingClientRect();
     
-    // Increase minimum spacing from 20px to 40px
-    const minLeftPosition = fileControlsRect.right + 80; // Doubled the padding
+    const minLeftPosition = fileControlsRect.right + 80;
 
     let newLeftPosition;
     if (editorContainer.classList.contains('hidden')) {
-        // When editor is hidden, position after file controls
         newLeftPosition = minLeftPosition;
     } else {
-        // When editor is visible, position after editor with increased padding
-        newLeftPosition = editorRect.right + 80; // Also doubled this padding
+        newLeftPosition = editorRect.right + 80;
     }
 
-    // Ensure we never go left of the minimum position
     newLeftPosition = Math.max(newLeftPosition, minLeftPosition);
     
     viewControls.style.left = `${newLeftPosition}px`;
     viewControls.style.top = `${toolbarRect.top}px`;
 }
 
-// Resizable Divider Setup
+// Resizable divider
 function setupResizableDivider() {
     const editorContainer = document.getElementById('editor-container');
     const viewerContainer = document.getElementById('viewer-container');
@@ -213,18 +210,14 @@ function setupResizableDivider() {
         const containerWidth = document.querySelector('.main-content').offsetWidth;
         let newWidth = e.clientX;
 
-        // Enforce minimum width constraints
         newWidth = Math.max(100, newWidth);
         newWidth = Math.min(newWidth, containerWidth - 200);
 
-        // Set the new width as a percentage
         const widthPercentage = (newWidth / containerWidth) * 100;
         editorContainer.style.width = `${widthPercentage}%`;
         
-        // Update view controls position while dragging
         updateViewControlsPosition();
         
-        // Ensure Monaco editor reflows correctly
         if (editor) {
             editor.layout();
         }
@@ -267,7 +260,6 @@ function setupEventListeners() {
             }, 300);
         }
 
-        // Remove transitions after animation
         setTimeout(() => {
             editorContainer.style.transition = '';
             viewerContainer.style.transition = '';
@@ -287,27 +279,67 @@ function setupEventListeners() {
             }
         });
     }
+}
 
-    // Save file handler
-    document.getElementById('saveFile')?.addEventListener('click', () => {
-        if (window.electron?.saveFile) {
-            window.electron.saveFile(editor.getValue());
+// File Handlers Setup
+function setupFileHandlers() {
+    // Open file handler
+    document.getElementById('openFile').addEventListener('click', async () => {
+        if (window.electron?.openFile) {
+            try {
+                await window.electron.openFile();
+            } catch (error) {
+                showErrorMessage(`Failed to open file: ${error.message}`);
+            }
         }
     });
 
-    // Window resize
-    window.addEventListener('resize', debounce(() => {
-        updateViewControlsPosition();
-        if (editor) {
-            try {
-                requestAnimationFrame(() => {
-                    editor.layout();
-                });
-            } catch (error) {
-                resizeObserverError(error);
+    // Save file handler
+    document.getElementById('saveFile').addEventListener('click', async () => {
+        if (!editor) return;
+        
+        const content = editor.getValue();
+        
+        try {
+            if (window.electron?.saveFile) {
+                const result = await window.electron.saveFile(content);
+                if (!result?.success && result?.error !== 'Operation cancelled') {
+                    showErrorMessage(`Failed to save file: ${result.error}`);
+                }
+            }
+        } catch (error) {
+            showErrorMessage(`Failed to save file: ${error.message}`);
+        }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            switch (e.key.toLowerCase()) {
+                case 's':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        // Ctrl/Cmd + Shift + S: Save As
+                        if (window.electron?.saveFileAs) {
+                            window.electron.saveFileAs(editor.getValue());
+                        }
+                    } else {
+                        // Ctrl/Cmd + S: Save
+                        if (window.electron?.saveFile) {
+                            window.electron.saveFile(editor.getValue());
+                        }
+                    }
+                    break;
+                case 'o':
+                    // Ctrl/Cmd + O: Open
+                    e.preventDefault();
+                    if (window.electron?.openFile) {
+                        window.electron.openFile();
+                    }
+                    break;
             }
         }
-    }, 100));
+    });
 }
 
 // Tool Toggle Setup
@@ -461,3 +493,5 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+
+export default editor;
