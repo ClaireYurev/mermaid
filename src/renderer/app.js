@@ -1,6 +1,21 @@
 import * as monaco from 'monaco-editor';
 import mermaid from 'mermaid';
 
+const resizeObserverError = error => {
+    if (error.message === 'ResizeObserver loop completed with undelivered notifications.') {
+        // Ignore this false positive
+        return;
+    }
+    // Log other errors as usual
+    console.error(error);
+};
+
+window.addEventListener('error', event => {
+    if (event.error instanceof Error) {
+        resizeObserverError(event.error);
+    }
+});
+
 let editor;
 let currentZoom = 1.0;
 
@@ -294,7 +309,13 @@ function setupEventListeners() {
     window.addEventListener('resize', debounce(() => {
         updateViewControlsPosition();
         if (editor) {
-            editor.layout();
+            try {
+                requestAnimationFrame(() => {
+                    editor.layout();
+                });
+            } catch (error) {
+                resizeObserverError(error);
+            }
         }
     }, 100));
 }
