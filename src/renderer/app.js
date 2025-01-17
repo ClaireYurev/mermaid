@@ -1,30 +1,14 @@
 import * as monaco from 'monaco-editor';
 import mermaid from 'mermaid';
 
-const resizeObserverError = error => {
-    if (error.message === 'ResizeObserver loop completed with undelivered notifications.') {
-        // Ignore this false positive
-        return;
-    }
-    // Log other errors as usual
-    console.error(error);
-};
-
-window.addEventListener('error', event => {
-    if (event.error instanceof Error) {
-        resizeObserverError(event.error);
-    }
-});
-
+// Global variables
 let editor;
 let currentZoom = 1.0;
-
-// panning variables
 let isPanning = false;
 let lastX;
 let lastY;
 
-// Initialize Mermaid with production settings
+// Initialize Mermaid
 mermaid.initialize({
     startOnLoad: true,
     theme: 'default',
@@ -44,17 +28,31 @@ mermaid.initialize({
     }
 });
 
-// Wait for DOM and APIs to be ready
+// Error handler for ResizeObserver
+const resizeObserverError = error => {
+    if (error.message === 'ResizeObserver loop completed with undelivered notifications.') {
+        return; // Ignore this false positive
+    }
+    console.error(error);
+};
+
+window.addEventListener('error', event => {
+    if (event.error instanceof Error) {
+        resizeObserverError(event.error);
+    }
+});
+
+// Main initialization
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeMonaco();
     setupEventListeners();
     setupResizableDivider();
-    updateViewControlsPosition();
+    setupToolToggle();
+    updateViewControlsPosition(); // Initial positioning
 });
 
-// Initialize Monaco Editor
+// Monaco Editor Initialization
 async function initializeMonaco() {
-
     const editorContainer = document.getElementById('monaco-editor');
     let layoutTimeout;
 
@@ -65,23 +63,18 @@ async function initializeMonaco() {
     monaco.languages.setMonarchTokensProvider('mermaid', {
         defaultToken: '',
         tokenPostfix: '.mmd',
-
         keywords: [
             'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 'stateDiagram',
             'pie', 'gantt', 'journey', 'gitGraph', 'erDiagram'
         ],
-
         typeKeywords: [
             'TD', 'TB', 'BT', 'RL', 'LR', 'participant', 'actor', 'class', 'state'
         ],
-
         operators: [
             '-->', '-.->', '==>', '-.->>', '-->>',
             '---|', '-.-|', '===|', '-.-|>', '--|>'
         ],
-
         operatorSymbols: /--|->|==>|\.|::|:/,
-
         tokenizer: {
             root: [
                 [/[a-zA-Z_$][\w$]*/, {
@@ -107,8 +100,8 @@ async function initializeMonaco() {
         }
     });
 
-    // Create Monaco editor instance with improved settings
-    editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+    // Create Monaco editor instance
+    editor = monaco.editor.create(editorContainer, {
         value: getDefaultDiagram(),
         language: 'mermaid',
         theme: 'vs-light',
@@ -130,7 +123,7 @@ async function initializeMonaco() {
         overviewRulerLanes: 0
     });
 
-    // The new ResizeObserver implementation
+    // Setup ResizeObserver for editor
     try {
         const ro = new ResizeObserver(entries => {
             if (layoutTimeout) {
@@ -140,7 +133,7 @@ async function initializeMonaco() {
                 try {
                     editor.layout();
                 } catch (error) {
-                    // Silently handle any layout errors
+                    console.warn('Editor layout update failed:', error);
                 }
             }, 100);
         });
@@ -152,7 +145,7 @@ async function initializeMonaco() {
             try {
                 editor.layout();
             } catch (error) {
-                // Silently handle any layout errors
+                console.warn('Editor layout update failed:', error);
             }
         }, 100));
     }
@@ -168,33 +161,39 @@ async function initializeMonaco() {
     }, 300));
 }
 
-async function updateMermaidDiagram(content) {
-    const mermaidContainer = document.getElementById('mermaid-diagram');
-    if (!mermaidContainer) return;
+// View Controls Positioning
+function updateViewControlsPosition() {
+    const editorContainer = document.getElementById('editor-container');
+    const viewControls = document.querySelector('.view-controls');
+    const toolbar = document.querySelector('.toolbar');
+    const fileControls = document.querySelector('.file-controls');
     
-    try {
-        // Clear previous diagram
-        mermaidContainer.innerHTML = '';
-        
-        // Create new diagram container
-        const diagramDiv = document.createElement('div');
-        diagramDiv.className = 'mermaid';
-        diagramDiv.style.zoom = currentZoom;
-        diagramDiv.textContent = formatMermaidContent(content);
-        
-        // Add to container
-        mermaidContainer.appendChild(diagramDiv);
-        
-        // Render with proper error handling
-        await mermaid.run();
-        clearErrorMessage();
-        
-    } catch (error) {
-        console.error('Mermaid rendering error:', error);
-        showErrorMessage(error.message);
+    if (!editorContainer || !viewControls || !toolbar || !fileControls) return;
+
+    const editorRect = editorContainer.getBoundingClientRect();
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const fileControlsRect = fileControls.getBoundingClientRect();
+    
+    // Increase minimum spacing from 20px to 40px
+    const minLeftPosition = fileControlsRect.right + 80; // Doubled the padding
+
+    let newLeftPosition;
+    if (editorContainer.classList.contains('hidden')) {
+        // When editor is hidden, position after file controls
+        newLeftPosition = minLeftPosition;
+    } else {
+        // When editor is visible, position after editor with increased padding
+        newLeftPosition = editorRect.right + 80; // Also doubled this padding
     }
+
+    // Ensure we never go left of the minimum position
+    newLeftPosition = Math.max(newLeftPosition, minLeftPosition);
+    
+    viewControls.style.left = `${newLeftPosition}px`;
+    viewControls.style.top = `${toolbarRect.top}px`;
 }
 
+// Resizable Divider Setup
 function setupResizableDivider() {
     const editorContainer = document.getElementById('editor-container');
     const viewerContainer = document.getElementById('viewer-container');
@@ -205,7 +204,6 @@ function setupResizableDivider() {
         isDragging = true;
         divider.classList.add('dragging');
         document.body.style.cursor = 'col-resize';
-        // Prevent text selection while dragging
         document.body.style.userSelect = 'none';
     });
 
@@ -215,16 +213,15 @@ function setupResizableDivider() {
         const containerWidth = document.querySelector('.main-content').offsetWidth;
         let newWidth = e.clientX;
 
-        // Enforce minimum width of 100px from left side
+        // Enforce minimum width constraints
         newWidth = Math.max(100, newWidth);
-        // Enforce maximum width (prevent going too far right)
         newWidth = Math.min(newWidth, containerWidth - 200);
 
         // Set the new width as a percentage
         const widthPercentage = (newWidth / containerWidth) * 100;
         editorContainer.style.width = `${widthPercentage}%`;
         
-        // Update view controls position
+        // Update view controls position while dragging
         updateViewControlsPosition();
         
         // Ensure Monaco editor reflows correctly
@@ -242,20 +239,88 @@ function setupResizableDivider() {
     });
 }
 
+// Event Listeners Setup
+function setupEventListeners() {
+    // Editor toggle
+    document.getElementById('toggleEditor')?.addEventListener('click', () => {
+        const editorContainer = document.getElementById('editor-container');
+        const viewerContainer = document.getElementById('viewer-container');
+        const isHidden = editorContainer.classList.contains('hidden');
+        
+        editorContainer.style.transition = 'width 0.3s ease';
+        viewerContainer.style.transition = 'width 0.3s ease';
+        
+        if (!isHidden) {
+            editorContainer.style.width = '0';
+            viewerContainer.style.width = '100%';
+            setTimeout(() => {
+                editorContainer.classList.add('hidden');
+                updateViewControlsPosition();
+            }, 300);
+        } else {
+            editorContainer.classList.remove('hidden');
+            editorContainer.style.width = '40%';
+            viewerContainer.style.width = '60%';
+            setTimeout(() => {
+                editor?.layout();
+                updateViewControlsPosition();
+            }, 300);
+        }
+
+        // Remove transitions after animation
+        setTimeout(() => {
+            editorContainer.style.transition = '';
+            viewerContainer.style.transition = '';
+        }, 300);
+    });
+
+    // Zoom controls
+    document.getElementById('zoomIn')?.addEventListener('click', () => handleZoom('in'));
+    document.getElementById('zoomOut')?.addEventListener('click', () => handleZoom('out'));
+
+    // File handling
+    if (window.electron?.onFileOpened) {
+        window.electron.onFileOpened(({ content, filePath }) => {
+            if (editor) {
+                editor.setValue(content);
+                document.title = `Mermaid Viewer - ${filePath}`;
+            }
+        });
+    }
+
+    // Save file handler
+    document.getElementById('saveFile')?.addEventListener('click', () => {
+        if (window.electron?.saveFile) {
+            window.electron.saveFile(editor.getValue());
+        }
+    });
+
+    // Window resize
+    window.addEventListener('resize', debounce(() => {
+        updateViewControlsPosition();
+        if (editor) {
+            try {
+                requestAnimationFrame(() => {
+                    editor.layout();
+                });
+            } catch (error) {
+                resizeObserverError(error);
+            }
+        }
+    }, 100));
+}
+
+// Tool Toggle Setup
 function setupToolToggle() {
     const toggleButton = document.getElementById('toggleTool');
     const viewerContainer = document.getElementById('viewer-container');
     
     toggleButton.addEventListener('click', () => {
         toggleButton.classList.toggle('active');
-        // const isPanMode = toggleButton.classList.contains('active'); Deprecated.
         const isSelectMode = toggleButton.classList.contains('active');
-        // toggleButton.title = isPanMode ? 'Switch to Select Tool' : 'Switch to Pan Tool'; Deprecated
         toggleButton.title = isSelectMode ? 'Switch to Pan Tool' : 'Switch to Select Tool';
-        // viewerContainer.style.cursor = isPanMode ? 'grab' : 'default'; Deprecated
         viewerContainer.style.cursor = isSelectMode ? 'default' : 'grab';
 
-        // Toggle visibility of icons
         const selectIcon = toggleButton.querySelector('.select-icon');
         const panIcon = toggleButton.querySelector('.pan-icon');
         selectIcon.classList.toggle('hidden');
@@ -291,66 +356,31 @@ function setupToolToggle() {
     });
 }
 
-function setupEventListeners() {
-    // Setup resizable divider
-    setupResizableDivider();
+// Mermaid Diagram Update
+async function updateMermaidDiagram(content) {
+    const mermaidContainer = document.getElementById('mermaid-diagram');
+    if (!mermaidContainer) return;
     
-    // Editor toggle
-    document.getElementById('toggleEditor')?.addEventListener('click', () => {
-        const editorContainer = document.getElementById('editor-container');
-        const isHidden = editorContainer.classList.contains('hidden');
+    try {
+        mermaidContainer.innerHTML = '';
         
-        editorContainer.classList.toggle('hidden');
-        if (!isHidden) {
-            document.getElementById('viewer-container').style.width = '100%';
-        } else {
-            document.getElementById('viewer-container').style.width = '60%';
-            editor?.layout();
-        }
-
-        // Update view-controls position after toggle
-        updateViewControlsPosition();
-    });
-
-    // Zoom controls
-    document.getElementById('zoomIn')?.addEventListener('click', () => handleZoom('in'));
-    document.getElementById('zoomOut')?.addEventListener('click', () => handleZoom('out'));
-
-    // File handling
-    if (window.electron?.onFileOpened) {
-        window.electron.onFileOpened(({ content, filePath }) => {
-            if (editor) {
-                editor.setValue(content);
-                document.title = `Mermaid Viewer - ${filePath}`;
-            }
-        });
+        const diagramDiv = document.createElement('div');
+        diagramDiv.className = 'mermaid';
+        diagramDiv.style.zoom = currentZoom;
+        diagramDiv.textContent = formatMermaidContent(content);
+        
+        mermaidContainer.appendChild(diagramDiv);
+        
+        await mermaid.run();
+        clearErrorMessage();
+        
+    } catch (error) {
+        console.error('Mermaid rendering error:', error);
+        showErrorMessage(error.message);
     }
-
-    // Set up tool toggle and pan controls
-    setupToolToggle();
-
-    // Save file handler (if implemented in electron)
-    document.getElementById('saveFile')?.addEventListener('click', () => {
-        if (window.electron?.saveFile) {
-            window.electron.saveFile(editor.getValue());
-        }
-    });
-
-    // Handle window resize
-    window.addEventListener('resize', debounce(() => {
-        updateViewControlsPosition();
-        if (editor) {
-            try {
-                requestAnimationFrame(() => {
-                    editor.layout();
-                });
-            } catch (error) {
-                resizeObserverError(error);
-            }
-        }
-    }, 100));
 }
 
+// Zoom Handling
 function handleZoom(direction) {
     const zoomStep = 0.25;
     const minZoom = 0.1;
@@ -384,27 +414,6 @@ function updateZoomDisplay() {
     }
 }
 
-function updateViewControlsPosition() {
-    const viewControls = document.querySelector('.view-controls');
-    const editorContainer = document.getElementById('editor-container');
-    
-    if (viewControls && editorContainer) {
-        // Force initial width if not set
-        if (!editorContainer.style.width) {
-            editorContainer.style.width = '40%';
-        }
-        const editorWidth = editorContainer.offsetWidth;
-        viewControls.style.left = `${editorWidth + 120}px`;
-        
-        // Ensure the view controls don't go off-screen
-        const maxLeft = window.innerWidth - viewControls.offsetWidth - 20;
-        const currentLeft = parseInt(viewControls.style.left);
-        if (currentLeft > maxLeft) {
-            viewControls.style.left = `${maxLeft}px`;
-        }
-    }
-}
-
 // Helper Functions
 function getDefaultDiagram() {
     return `graph TD
@@ -413,7 +422,6 @@ function getDefaultDiagram() {
 }
 
 function formatMermaidContent(content) {
-    // Remove comments and trim whitespace
     return content
         .split('\n')
         .map(line => line.replace(/\/\/.*$/, '').trim())
