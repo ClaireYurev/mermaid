@@ -54,6 +54,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Initialize Monaco Editor
 async function initializeMonaco() {
+
+    const editorContainer = document.getElementById('monaco-editor');
+    let layoutTimeout;
+
     // Register Mermaid language
     monaco.languages.register({ id: 'mermaid' });
 
@@ -109,7 +113,7 @@ async function initializeMonaco() {
         language: 'mermaid',
         theme: 'vs-light',
         minimap: { enabled: false },
-        automaticLayout: true,
+        automaticLayout: false,
         wordWrap: 'on',
         lineNumbers: 'on',
         roundedSelection: true,
@@ -125,6 +129,33 @@ async function initializeMonaco() {
         rulers: [],
         overviewRulerLanes: 0
     });
+
+    // The new ResizeObserver implementation
+    try {
+        const ro = new ResizeObserver(entries => {
+            if (layoutTimeout) {
+                clearTimeout(layoutTimeout);
+            }
+            layoutTimeout = setTimeout(() => {
+                try {
+                    editor.layout();
+                } catch (error) {
+                    // Silently handle any layout errors
+                }
+            }, 100);
+        });
+
+        ro.observe(editorContainer);
+    } catch (error) {
+        console.warn('ResizeObserver not supported, falling back to window resize event');
+        window.addEventListener('resize', debounce(() => {
+            try {
+                editor.layout();
+            } catch (error) {
+                // Silently handle any layout errors
+            }
+        }, 100));
+    }
 
     // Initial render
     const content = editor.getValue();
